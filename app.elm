@@ -3,6 +3,9 @@ import Html.Attributes exposing (style)
 import Html.App as App
 import Html.Events exposing (onClick)
 
+import Navigation
+import Url exposing (..)
+
 import Material
 import Material.Button as Button
 
@@ -12,25 +15,33 @@ import Model exposing (..)
 import Msg exposing (..)
 
 main =
-    App.program { init = ( model, Cmd.none )
+    Navigation.program urlParser { init = init
                 , view = view
                 , update = update
+                , urlUpdate = urlUpdate
                 , subscriptions = always Sub.none
                 }
 
+init : Result String Int -> (Model, Cmd Msg)
+init result =
+    urlUpdate result model
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
-    case msg of
-        Increment ->
-            ({ model | counter = model.counter + 1 }
-            , Cmd.none
-            )
-        Decrement ->
-            ({ model | counter = model.counter - 1}
-            , Cmd.none
-            )
-        Mdl msg' ->
-            Material.update msg' model
+    let (newModel, cmd) =
+            case msg of
+                Increment ->
+                    ({ model | counter = model.counter + 1 }
+                    , Cmd.none
+                    )
+                Decrement ->
+                    ({ model | counter = model.counter - 1}
+                    , Cmd.none
+                    )
+                Mdl msg' ->
+                    Material.update msg' model
+    in
+        (newModel, Cmd.batch [cmd, Navigation.newUrl (toUrl newModel)])
 
 content: Model -> List Int -> Html Msg
 content model idx =
@@ -41,5 +52,5 @@ content model idx =
         ]
 
 view model =
-    View.Layout.render model View.LoginForm.render
+    View.Layout.render model content
 
