@@ -1,30 +1,36 @@
-module Url exposing (toUrl, urlParser, urlUpdate)
+module Url exposing (hopConfig, urlParser, urlUpdate)
 
 import String
-
 import Navigation
+import Hop.Types exposing (Config, Address)
+import Hop
+import UrlParser
 
 import Model exposing (Model)
 import Msg exposing (Msg)
+import Routing exposing (routeParser, Route (Root))
 
-toUrl : Model -> String
-toUrl model =
-    "#/count/" ++ toString model.counter
 
-fromUrl : String -> Result String Int
-fromUrl url =
-    url
-        |> String.dropLeft 8
-        |> String.toInt
 
-urlParser : Navigation.Parser (Result String Int)
+hopConfig : Config
+hopConfig =
+    { hash = True
+    , basePath = ""
+    }
+
+
+urlParser : Navigation.Parser ( Route, Address )
 urlParser =
-    Navigation.makeParser (fromUrl << .hash)
+    let
+        parse path =
+            path
+                |> UrlParser.parse identity routeParser
+                |> Result.withDefault Root
+        resolver =
+            Hop.makeResolver hopConfig parse
+    in
+        Navigation.makeParser (.href >> resolver)
 
-urlUpdate : Result String Int -> Model -> (Model, Cmd Msg)
-urlUpdate result model =
-    case result of
-        Ok newCount ->
-            ({ model | counter = newCount }, Cmd.none)
-        Err _ ->
-            (model, Navigation.modifyUrl (toUrl model))
+urlUpdate : ( Route, Address ) -> Model -> ( Model, Cmd Msg )
+urlUpdate ( route, address ) model =
+    ( { model | route = route, address = address }, Cmd.none )
