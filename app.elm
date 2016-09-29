@@ -3,11 +3,15 @@ import Html.Attributes exposing (style)
 import Html.App as App
 import Html.Events exposing (onClick)
 
+import String
+
 import Navigation
 import Url exposing (..)
 import Routing exposing (Route (..))
 import Hop
 import Hop.Types exposing (Address)
+import WebSocket
+import Debug exposing (log)
 
 import Material
 import Material.Button as Button
@@ -17,6 +21,7 @@ import View.LoginForm
 import Model exposing (..)
 import Msg exposing (..)
 import Url exposing (..)
+import Fosp.Connection as FospConnection
 
 main =
     Navigation.program urlParser { init = init
@@ -33,31 +38,37 @@ init ( route, address ) =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
-        Increment ->
-            ({ model | counter = model.counter + 1 }
-            , Cmd.none
-            )
-        Decrement ->
-            ({ model | counter = model.counter - 1}
-            , Cmd.none
-            )
         Mdl msg' ->
             Material.update msg' model
         NavigateTo path ->
             ( model, (Hop.outputFromPath hopConfig path |> Navigation.newUrl))
         SetQuery query ->
             ( model, (model.address |> Hop.setQuery query |> Hop.output hopConfig |> Navigation.newUrl))
+        MessageReceived message ->
+            let
+                _ = log "WebSocket message received : " message
+            in
+                ( model, Cmd.none )
+        FospMsg msg' ->
+            let
+                (connection, cmd) = FospConnection.update msg' model.connection
+            in
+                ({ model | connection = connection }, cmd)
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case model.connection.host of
+        "" -> Sub.none
+        host -> WebSocket.listen host MessageReceived
 
 content: Model -> List Int -> Html Msg
 content model idx =
     div [ style [ ("margin", "20px auto"), ("width", "600px") ] ]
-        [ Button.render Mdl (idx ++ [0]) model.mdl [ Button.onClick Decrement ] [ text "-" ]
-        , div [] [ text (toString model.counter) ]
-        , Button.render Mdl (idx ++ [1]) model.mdl [ Button.onClick Increment ] [ text "+" ]
-        ]
+        []
 
 view model =
     case model.route of
-        Login -> View.Layout.render model View.LoginForm.render
+        Routing.Login -> View.Layout.render model View.LoginForm.render
         _ -> View.Layout.render model content
+
 
