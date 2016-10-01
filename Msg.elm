@@ -8,7 +8,6 @@ import Fosp.Connection as FospConnection
 type Msg
     = NavigateTo String
     | SetQuery Query
-    | MessageReceived String
     | FospMsg FospConnection.Msg
     | Mdl (Material.Msg Msg)
 

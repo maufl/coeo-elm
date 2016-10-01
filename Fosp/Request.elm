@@ -14,19 +14,20 @@ serialize request id =
 serializeAuthenticate : String -> String -> Int -> String
 serializeAuthenticate username password id =
     let
-        head = "AUTH * " ++ toString id ++ "\n\r\n\r"
+        head = "AUTH * " ++ toString id ++ "\r\n\r\n"
+        initialResponse = "\0" ++ username ++ "\0" ++ password
         value = object
                 [ ("sasl", object
                        [ ("mechanism", string "PLAIN")
                        , ("authorization-identity", string username)
-                       , ("initial-response", string password)
+                       , ("initial-response", string initialResponse)
                        ]
                   )
                 ]
-        body = encode 2 value
+        body = encode 0 value
     in
         head ++ body
 
 serializeGet : String -> Int -> String
 serializeGet url id =
-    "GET " ++ url ++ " " ++ toString id ++ "\n\r\n\r"
+    "GET " ++ url ++ " " ++ toString id ++ "\r\n\r\n"

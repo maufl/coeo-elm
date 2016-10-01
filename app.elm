@@ -1,20 +1,10 @@
-import Html exposing (Html, button, div, text)
-import Html.Attributes exposing (style)
-import Html.App as App
-import Html.Events exposing (onClick)
-
-import String
-
 import Navigation
-import Url exposing (..)
 import Routing exposing (Route (..))
 import Hop
 import Hop.Types exposing (Address)
 import WebSocket
-import Debug exposing (log)
 
 import Material
-import Material.Button as Button
 
 import View.Layout
 import View.LoginForm
@@ -28,7 +18,7 @@ main =
                 , view = view
                 , update = update
                 , urlUpdate = urlUpdate
-                , subscriptions = always Sub.none
+                , subscriptions = subscriptions
                 }
 
 init : ( Route, Address ) -> ( Model, Cmd Msg )
@@ -44,11 +34,6 @@ update msg model =
             ( model, (Hop.outputFromPath hopConfig path |> Navigation.newUrl))
         SetQuery query ->
             ( model, (model.address |> Hop.setQuery query |> Hop.output hopConfig |> Navigation.newUrl))
-        MessageReceived message ->
-            let
-                _ = log "WebSocket message received : " message
-            in
-                ( model, Cmd.none )
         FospMsg msg' ->
             let
                 (connection, cmd) = FospConnection.update msg' model.connection
@@ -59,16 +44,9 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.connection.host of
         "" -> Sub.none
-        host -> WebSocket.listen host MessageReceived
-
-content: Model -> List Int -> Html Msg
-content model idx =
-    div [ style [ ("margin", "20px auto"), ("width", "600px") ] ]
-        []
+        host -> WebSocket.listen host (\x -> FospMsg (FospConnection.ReceiveMessage x))
 
 view model =
     case model.route of
         Routing.Login -> View.Layout.render model View.LoginForm.render
-        _ -> View.Layout.render model content
-
-
+        _ -> View.Layout.render model View.LoginForm.render

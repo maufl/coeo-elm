@@ -1,6 +1,9 @@
 module Fosp.Connection exposing (..)
 
+import Debug exposing (log)
+
 import Fosp.Request exposing (..)
+import Fosp.Response exposing (..)
 
 import Regex exposing (contains, regex)
 import String
@@ -27,6 +30,8 @@ type Msg = UpdateUsername String
          | UpdatePassword String
          | SignIn
          | SendRequest Request
+         | ReceiveMessage String
+         | ProcessResponse (Response, Int)
 
 update: Msg -> Model -> ( Model, Cmd a)
 update msg model =
@@ -50,12 +55,25 @@ update msg model =
                 cmd = WebSocket.send model.host payload
             in
                 ({ model | currentRequestId = model.currentRequestId + 1 }, cmd)
-
+        ReceiveMessage message ->
+            case (parse message) of
+                Ok (response, sequence) ->
+                    update (ProcessResponse (response, sequence)) model
+                Err err ->
+                    let
+                        _ = log "Could not parse response " err
+                    in
+                        (model, Cmd.none)
+        ProcessResponse (response, sequence) ->
+            let
+                _ = log "Received response " response
+            in
+                (model, Cmd.none)
 getHost : String -> Maybe String
 getHost username =
     case (String.split "@" username) of
         [name, host] ->
-            if (contains (regex "^[^.]\\.[^.]$") host) then
+            if (contains (regex "^[^.]+\\.[^.]+$") host) then
                 Just ("ws://" ++ host ++ ":1337")
             else
                 Nothing
