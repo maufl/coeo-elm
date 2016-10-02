@@ -4,8 +4,10 @@ import Debug exposing (log)
 
 import Fosp.Request exposing (..)
 import Fosp.Response exposing (..)
+import Fosp.Object exposing (Object, decoder)
 
 import Regex exposing (contains, regex)
+import Json.Decode exposing (decodeString)
 import Dict
 import String
 import WebSocket
@@ -18,6 +20,7 @@ type alias Model = { host: String
                    , state: State
                    , currentRequestId: Int
                    , pendingRequests: Dict.Dict Int Request
+                   , objects: Dict.Dict String Object
                    }
 
 model : Model
@@ -27,6 +30,7 @@ model = { host = ""
         , state = Unauthenticated
         , currentRequestId = 1
         , pendingRequests = Dict.empty
+        , objects = Dict.empty
         }
 
 type Msg = UpdateUsername String
@@ -80,17 +84,35 @@ update msg model =
                     in
                         (model, Cmd.none)
 
---updateWithResponse : Request -> Response -> Model -> (Model, Cmd a)
+updateWithResponse : Request -> Response -> Model -> (Model, Cmd a)
 updateWithResponse request response model =
     case request of
         Authenticate _ _ ->
             case response of
                 Succeeded _ _ ->
-                    ({ model | state = Authenticated }, Cmd.none)
-                _ ->
+                    let
+                        request = Get model.username
+                        model = { model | state = Authenticated }
+                    in
+                        update (SendRequest request) model
+                Failed _ _ ->
                     ({ model | state = Unauthenticated }, Cmd.none)
-        _ ->
-            (model, Cmd.none)
+        Get url ->
+            case response of
+                Succeeded _ body ->
+                    case (decodeString decoder body) of
+                        Ok object ->
+                            let
+                                objects = Dict.insert url object model.objects
+                            in
+                                ({ model | objects = objects }, Cmd.none)
+                        Err err ->
+                            let
+                                _ = log "Error while decoding object" err
+                            in
+                            (model, Cmd.none)
+                Failed _ _ ->
+                    (model, Cmd.none)
 
 getHost : String -> Maybe String
 getHost username =

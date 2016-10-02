@@ -32,10 +32,10 @@ parseStatusLine statusLine =
                 (_, Err _) ->
                     Err ("Sequence number " ++ sequenceString ++ " is not a number")
         _ ->
-            Err "Statusline does not consist of three parts"
+            Err ("Statusline does not consist of three parts: " ++ statusLine)
 
-splitFirstLine =
-    split (AtMost 1) (regex "\r\n")
+splitFirstLine string =
+    split (AtMost 1) (regex "\r\n") string
 
-splitAtWhitespace =
-    split All (regex "\\s+")
+splitAtWhitespace string =
+    split All (regex "\\s+") string
